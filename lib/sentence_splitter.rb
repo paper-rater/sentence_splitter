@@ -1,3 +1,4 @@
+# encoding: utf-8
 class SentenceSplitter
   # Functionally, this class is a port of perl's Lingua::EN::Sentence module.
 
@@ -6,7 +7,7 @@ class SentenceSplitter
   AP          = /(?:'|"|»|\)|\]|\})?/   ## AFTER PUNCTUATION
   PAP         = /#{P}#{AP}/
 
-  PEOPLE      = [ 'jr', 'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', "sens?", "reps?", 'gov', "attys?", 'supt',  'det', 'rev' ]
+  PEOPLE      = [ 'jr', 'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', "sens?", "reps?", 'gov', "attys?", 'supt',  'det', 'rev', 'br' ]
   ARMY        = [ 'col','gen', 'lt', 'cmdr', 'adm', 'capt', 'sgt', 'cpl', 'maj' ]
   INSTITUTES  = [ 'dept', 'univ', 'assn', 'bros' ]
   COMPANIES   = [ 'inc', 'ltd', 'co', 'corp' ]
@@ -23,7 +24,7 @@ class SentenceSplitter
   MONTHS      = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec','sept']
   MISC        = [ 'vs', 'etc', 'no', 'esp' ]
 
-  @abbreviations  = [ PEOPLE, ARMY, INSTITUTES, COMPANIES, PLACES, MONTHS, MISC ].flatten
+  @abbreviations  = [ PEOPLE.map!(&:capitalize), ARMY, INSTITUTES, COMPANIES, PLACES, MONTHS, MISC ].flatten
 
   class << self
     attr_accessor :abbreviations
@@ -56,51 +57,54 @@ class SentenceSplitter
 
     ### Start by roughly marking possible ends of sentences.
 
-    marked_text.gsub!(/\n\s*\n/s,' ' + EOS)      ## double new-line means a different sentence.
-    marked_text.gsub!(/(#{PAP}\s)/s,"\\1#{EOS}")
-    marked_text.gsub!(/(\s\w#{P})/s,"\\1#{EOS}") # break also when single letter comes before punc.
+    marked_text.gsub!(/\n\s*\n/,' ' + EOS)      ## double new-line means a different sentence.
+    marked_text.gsub!(/(#{PAP}\s)/,"\\1#{EOS}")
+    marked_text.gsub!(/(\s\w#{P})/,"\\1#{EOS}") # break also when single letter comes before punc.
 
 
     ### Next, remove markings from false positives.
 
     # Don't split after abbreviations with inline stops, like U.S.A.
-    marked_text.gsub!(/([^-\w]\w#{PAP}\s)#{EOS}/s, '\1')
-    marked_text.gsub!(/([^-\w]\w#{P})#{EOS}/s, '\1')
+    marked_text.gsub!(/([^-\w]\w#{PAP}\s)#{EOS}/, '\1')
+    marked_text.gsub!(/([^-\w]\w#{P})#{EOS}/, '\1')
 
     # Don't split after single-letter abbreviations.
-    marked_text.gsub!(/(\s\w\.\s+)#{EOS}/s, '\1')
+    marked_text.gsub!(/(\s\w\.\s+)#{EOS}/, '\1')
 
     # Don't split after fake elipses (... used in place of …)
-    marked_text.gsub!(/(\.\.\. )#{EOS}([[:lower:]])/s, '\1\2')
+    marked_text.gsub!(/(\.\.\. )#{EOS}([[:lower:]])/, '\1\2')
 
     # Don't split after quotes sentence-terminating punctuation (e.g. "." "?" "!" )
-    marked_text.gsub!(/(['"]#{P}['"]\s+)#{EOS}/s, '\1')
+    marked_text.gsub!(/(['"]#{P}['"]\s+)#{EOS}/, '\1')
 
     # Don't split after known abbreviations.
     SentenceSplitter.abbreviations.each do |abbrev|
-      marked_text.gsub!(/((\s || ^)#{abbrev}#{PAP}\s)#{EOS}/is, '\1')
+      marked_text.gsub!(/((\s || ^)#{abbrev}#{PAP}\s)#{EOS}/, '\1')
     end
+    # SentenceSplitter.abbreviations.each do |abbrev|
+    #   marked_text.gsub!(/((\s || ^)#{abbrev}#{PAP}\s)#{EOS}/is, '\1')
+    # end
 
     # Don't split after quote unless it is followed by a capital letter.
-    marked_text.gsub!(/(["']\s*)#{EOS}(\s*[[:lower:]])/s, '\1\2')
+    marked_text.gsub!(/(["']\s*)#{EOS}(\s*[[:lower:]])/, '\1\2')
 
     # Don't split: text . . some more text.
-    marked_text.gsub!(/(\s\.\s)#{EOS}(\s*)/s, '\1\2')
+    marked_text.gsub!(/(\s\.\s)#{EOS}(\s*)/, '\1\2')
 
     # Don't split when terminating puncuation is surrounded by spaces.
-    marked_text.gsub!(/(\s#{PAP}\s)#{EOS}/s, '\1')
+    marked_text.gsub!(/(\s#{PAP}\s)#{EOS}/, '\1')
 
 
     ### Finally, re-mark items mistakenly stripped by the false-positive step .
 
-    marked_text.gsub!(/(\D\d+)(#{P})(\s+)/s,"\\1\\2#{EOS}\\3")
-    marked_text.gsub!(/(#{PAP}\s)(\s*\()/s, "\\1#{EOS}\\2")
-    marked_text.gsub!(/('\w#{P})(\s)/s, "\\1#{EOS}\\2")
+    marked_text.gsub!(/(\D\d+)(#{P})(\s+)/,"\\1\\2#{EOS}\\3")
+    marked_text.gsub!(/(#{PAP}\s)(\s*\()/, "\\1#{EOS}\\2")
+    marked_text.gsub!(/('\w#{P})(\s)/, "\\1#{EOS}\\2")
 
-    marked_text.gsub!(/(\sno\.)(\s+)(?!\d)/is, "\\1#{EOS}\\2")
+    marked_text.gsub!(/(\sno\.)(\s+)(?!\d)/, "\\1#{EOS}\\2")
 
     # add EOS when you see "a.m." or "p.m." followed by a capital letter.
-    marked_text.gsub!(/([ap]\.m\.\s+)([[:upper:]])/s, "\\1#{EOS}\\2")
+    marked_text.gsub!(/([ap]\.m\.\s+)([[:upper:]])/, "\\1#{EOS}\\2")
 
     return @sentences = marked_text.split(EOS).compact.map{|s| s.strip }.reject{|s| s.empty? }
   end
