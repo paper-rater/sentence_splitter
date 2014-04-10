@@ -61,6 +61,18 @@ describe "SentenceSplitter" do
     SentenceSplitter.get_sentences(text).should == sentances
   end
 
+  it "should not misunderstand with known abbreviations" do
+    sentances = ["Who let the dogs out?", "I am the man.", "This is an apple."]
+    text = sentances.join(' ')
+    SentenceSplitter.get_sentences(text).should == sentances
+  end
+
+  it "should function properly with wiki paragraphs" do
+    sentances = ["A paragraph (from the Greek paragraphos, \"to write beside\" or \"written beside\") is a self-contained unit of a discourse in writing dealing with a particular point or idea.", "A paragraph has 5 types (Br. Anton Heitman).", "A paragraph consists of one or more sentences.", "Though not required by the syntax of any language, paragraphs are usually an expected part of formal writing, used to organize longer prose."]
+    text = sentances.join(' ')
+    SentenceSplitter.get_sentences(text).should == sentances
+  end
+
   describe "avoiding known abbreviations" do
     SentenceSplitter.abbreviations.each do |abbrev|
       abbrev.gsub!('?','') #since we're not using abbrev in a regexp here
